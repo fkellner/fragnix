@@ -1,0 +1,1 @@
+{"sliceID":748074131329857264,"fragment":[" \ntype Edge = (Vertex, Vertex)"],"usages":[{"reference":{"otherSlice":3161584788727874551},"usedName":{"typeIdentifier":"Vertex"},"qualification":null}],"language":["Rank2Types","Trustworthy"]}

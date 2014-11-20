@@ -1,0 +1,1 @@
+[{"name":"deepseq","module":"Control.DeepSeq","entity":"value"},{"name":"$!!","module":"Control.DeepSeq","entity":"value"},{"name":"force","module":"Control.DeepSeq","entity":"value"},{"name":"NFData","module":"Control.DeepSeq","entity":"class"},{"name":"rnf","module":"Control.DeepSeq","entity":"method","class":"NFData"}]

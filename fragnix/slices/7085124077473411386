@@ -1,0 +1,1 @@
+{"sliceID":7085124077473411386,"fragment":[" \ntype Bounds = (Vertex, Vertex)"],"usages":[{"reference":{"otherSlice":3161584788727874551},"usedName":{"typeIdentifier":"Vertex"},"qualification":null}],"language":["Rank2Types","Trustworthy"]}

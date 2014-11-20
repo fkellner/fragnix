@@ -1,0 +1,1 @@
+{"sliceID":2621329941938049112,"fragment":[" \ndata MaybeS a = NothingS\n              | JustS !a"],"usages":[],"language":["DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

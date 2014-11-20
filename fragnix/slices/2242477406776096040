@@ -1,0 +1,1 @@
+{"sliceID":2242477406776096040,"fragment":[" \n($!!) :: (NFData a) => (a -> b) -> a -> b","f $!! x = x `deepseq` f x"," \ninfixr 0 $!!"],"usages":[{"reference":{"otherSlice":7597487150480988864},"usedName":{"valueIdentifier":"deepseq"},"qualification":null},{"reference":{"otherSlice":5963914240364592127},"usedName":{"typeIdentifier":"NFData"},"qualification":null}],"language":[]}

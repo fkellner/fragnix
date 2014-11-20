@@ -1,0 +1,1 @@
+[{"name":"StrictPair","module":"Data.StrictPair","entity":"data"},{"name":":*:","module":"Data.StrictPair","type":"StrictPair","entity":"constructor"},{"name":"toPair","module":"Data.StrictPair","entity":"value"}]

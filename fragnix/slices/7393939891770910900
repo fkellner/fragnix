@@ -1,0 +1,1 @@
+{"sliceID":7393939891770910900,"fragment":[" \ntype Graph = Table [Vertex]"],"usages":[{"reference":{"otherSlice":403868205932388428},"usedName":{"typeIdentifier":"Table"},"qualification":null},{"reference":{"otherSlice":3161584788727874551},"usedName":{"typeIdentifier":"Vertex"},"qualification":null}],"language":["Rank2Types","Trustworthy"]}

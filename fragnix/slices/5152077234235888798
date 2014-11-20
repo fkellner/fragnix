@@ -1,0 +1,1 @@
+{"sliceID":5152077234235888798,"fragment":[" \nwithBar, withEmpty :: [String] -> [String]","withBar bars = \"|  \" : bars","withEmpty bars = \"   \" : bars"],"usages":[{"reference":{"originalModule":"Prelude"},"usedName":{"typeIdentifier":"String"},"qualification":null}],"language":["MagicHash","DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

@@ -1,0 +1,1 @@
+{"sliceID":8926059807245558205,"fragment":[" \nfold :: (a -> b -> b) -> b -> IntMap a -> b","fold = foldr"],"usages":[{"reference":{"otherSlice":6169963112424050884},"usedName":{"valueIdentifier":"foldr"},"qualification":null},{"reference":{"otherSlice":6169963112424050884},"usedName":{"typeIdentifier":"IntMap"},"qualification":null}],"language":["Trustworthy"]}

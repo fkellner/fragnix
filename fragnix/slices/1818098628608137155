@@ -1,0 +1,1 @@
+{"sliceID":1818098628608137155,"fragment":[" \ntype BitMap = Word"],"usages":[{"reference":{"originalModule":"GHC.Word"},"usedName":{"typeIdentifier":"Word"},"qualification":null}],"language":["MagicHash","BangPatterns","DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

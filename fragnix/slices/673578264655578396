@@ -1,0 +1,1 @@
+{"sliceID":673578264655578396,"fragment":[" \ntype Size = Int"],"usages":[{"reference":{"originalModule":"Prelude"},"usedName":{"typeIdentifier":"Int"},"qualification":null}],"language":["DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

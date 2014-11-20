@@ -1,0 +1,1 @@
+{"sliceID":702805141733383179,"fragment":[" \ntype Nat = Word"],"usages":[{"reference":{"originalModule":"GHC.Word"},"usedName":{"typeIdentifier":"Word"},"qualification":null}],"language":["MagicHash","DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

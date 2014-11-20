@@ -1,0 +1,1 @@
+{"sliceID":3161584788727874551,"fragment":[" \ntype Vertex = Int"],"usages":[{"reference":{"originalModule":"Prelude"},"usedName":{"typeIdentifier":"Int"},"qualification":null}],"language":["Rank2Types","Trustworthy"]}

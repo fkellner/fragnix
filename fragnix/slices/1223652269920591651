@@ -1,0 +1,1 @@
+{"sliceID":1223652269920591651,"fragment":[" \nfirst :: (a -> b) -> (a, c) -> (b, c)","first f (x, y) = (f x, y)"],"usages":[],"language":["DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

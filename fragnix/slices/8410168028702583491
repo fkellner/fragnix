@@ -1,0 +1,1 @@
+{"sliceID":8410168028702583491,"fragment":[" \ntype Mask = Int"],"usages":[{"reference":{"originalModule":"Prelude"},"usedName":{"typeIdentifier":"Int"},"qualification":null}],"language":["MagicHash","DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

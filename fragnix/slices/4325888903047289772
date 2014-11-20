@@ -1,0 +1,1 @@
+{"sliceID":4325888903047289772,"fragment":[" \nforce :: (NFData a) => a -> a","force x = x `deepseq` x"],"usages":[{"reference":{"otherSlice":7597487150480988864},"usedName":{"valueIdentifier":"deepseq"},"qualification":null},{"reference":{"otherSlice":5963914240364592127},"usedName":{"typeIdentifier":"NFData"},"qualification":null}],"language":[]}

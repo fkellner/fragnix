@@ -1,0 +1,1 @@
+{"sliceID":2636475384673490372,"fragment":[" \ndata Place a = Place {-# UNPACK #-} !Int a"],"usages":[{"reference":{"originalModule":"Prelude"},"usedName":{"typeIdentifier":"Int"},"qualification":null}],"language":["DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

@@ -1,0 +1,1 @@
+{"sliceID":1149454245707329186,"fragment":[" \nnode :: String","node = \"+--\""],"usages":[{"reference":{"originalModule":"Prelude"},"usedName":{"typeIdentifier":"String"},"qualification":null}],"language":["MagicHash","DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

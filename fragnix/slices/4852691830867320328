@@ -1,0 +1,1 @@
+{"sliceID":4852691830867320328,"fragment":[" \ndata Maybe2 a b = Nothing2\n                | Just2 a b"],"usages":[],"language":["DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

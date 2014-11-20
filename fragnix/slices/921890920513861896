@@ -1,0 +1,1 @@
+{"sliceID":921890920513861896,"fragment":[" \nfold :: (a -> b -> b) -> b -> Map k a -> b","fold = foldr"],"usages":[{"reference":{"otherSlice":8912391320880523566},"usedName":{"valueIdentifier":"foldr"},"qualification":null},{"reference":{"otherSlice":8912391320880523566},"usedName":{"typeIdentifier":"Map"},"qualification":null}],"language":[]}

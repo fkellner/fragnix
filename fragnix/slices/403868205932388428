@@ -1,0 +1,1 @@
+{"sliceID":403868205932388428,"fragment":[" \ntype Table a = Array Vertex a"],"usages":[{"reference":{"originalModule":"GHC.Arr"},"usedName":{"typeIdentifier":"Array"},"qualification":null},{"reference":{"otherSlice":3161584788727874551},"usedName":{"typeIdentifier":"Vertex"},"qualification":null}],"language":["Rank2Types","Trustworthy"]}

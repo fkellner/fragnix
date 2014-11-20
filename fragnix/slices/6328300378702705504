@@ -1,0 +1,1 @@
+{"sliceID":6328300378702705504,"fragment":[" \ndata PQueue e = PQueue e (PQL e)"," \ndata PQL e = Nil\n           | {-# UNPACK #-} !(PQueue e) :& PQL e"," \ninfixr 8 :&"],"usages":[],"language":["DeriveDataTypeable","StandaloneDeriving","Trustworthy"]}

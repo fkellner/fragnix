@@ -1,0 +1,1 @@
+{"sliceID":5243445332414938680,"fragment":[" \ndata StrictPair a b = !a :*: !b"],"usages":[],"language":["Trustworthy"]}
