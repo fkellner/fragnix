@@ -16,19 +16,23 @@ main = do
     exitCode <- rawSystem "cabal" [
         "install","--force-reinstalls",
         "--gcc-option=-I/usr/lib/ghc/include",
-        "--haskell-suite","-w","haskell-modules",
+        "--reinstall",
+        "--ghc-options=-optP=-E",
         "--prefix=" ++ (currentdirectory </> "fragnix" </> "temp"),
         "--package-db=" ++ (currentdirectory </> "fragnix" </> "temp" </> "packages.db"),
+        "-v1",
         packagequalifier]
-    copyModuleFiles
+--    copyModuleFiles
     print exitCode
 
 copyModuleFiles :: IO ()
 copyModuleFiles = do
-    libraryFolderNames <- getDirectoryContents installationPath >>= return . filter (not . (=='.') . head)
+    libraryFolderNames <- getDirectoryContents installationPath
+        >>= return . filter (not . (=='.') . head)
     createDirectoryIfMissing True moduleSourcePath
     forM_ libraryFolderNames (\libraryFolderName -> do
-        moduleFileNames <- getDirectoryContents (installationPath </> libraryFolderName) >>= return . filter ((==".hs") . takeExtension)
+        moduleFileNames <- getDirectoryContents (installationPath </> libraryFolderName)
+            >>= return . filter ((==".hs") . takeExtension)
         forM_ moduleFileNames (\moduleFileName -> do
             copyFile
                 (installationPath </> libraryFolderName </> moduleFileName)
