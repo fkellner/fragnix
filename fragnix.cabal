@@ -21,6 +21,7 @@ executable fragnix
                        Fragnix.Declaration,
                        Fragnix.ModuleDeclarations,
                        Fragnix.DeclarationSlices,
+                       Fragnix.ModuleSlices,
                        Fragnix.SliceCompiler,
                        Fragnix.Symbols,
                        Fragnix.Environment
