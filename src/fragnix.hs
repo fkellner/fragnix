@@ -6,6 +6,7 @@ import Fragnix.ModuleDeclarations (moduleDeclarations)
 import Fragnix.DeclarationSlices (declarationSlices)
 import Fragnix.SliceCompiler (sliceCompilerMain)
 import Fragnix.Environment (loadEnvironment,environmentPath,mainsymbol)
+import Fragnix.ModuleSlices ()
 
 import qualified Data.Map as Map (lookup)
 import Control.Monad (forM_)
