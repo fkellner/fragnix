@@ -27,11 +27,21 @@ import Control.Applicative ((<|>))
 import Data.Text (pack)
 import Data.Char (isDigit)
 import Data.Map (Map)
-import qualified Data.Map as Map (lookup,fromList,fromListWith,(!),map)
+import qualified Data.Map as Map (lookup,fromList,fromListWith,(!),map,toList)
 import qualified Data.Set as Set (fromList,member)
-import Data.Maybe (maybeToList,fromJust,listToMaybe)
+import Data.Maybe (maybeToList,fromJust)
 import Data.Hashable (hash)
 import Data.List (nub,(\\))
+
+
+
+-- | A temporary ID before slices can be hashed. It is negative but we
+-- do not enforce this.
+type TempID = Integer
+
+-- | A Slice with a temporary ID that may use slices with
+-- temporary IDs.
+type TempSlice = Slice
 
 
 -- | Extract all slices from the given list of declarations. Also return a map
@@ -45,7 +55,6 @@ declarationSlices declarations = (slices,symbolSlices) where
     sliceBindingsMap = sliceBindings fragmentNodes
     sliceInstancesMap = sliceInstances fragmentNodes
     constructorMap = sliceConstructors fragmentNodes
-
 
     tempSlices = map (buildTempSlice sliceBindingsMap sliceInstancesMap constructorMap) fragmentNodes
     tempSliceIDMap = tempSliceIDs tempSlices
@@ -64,29 +73,48 @@ sliceBindings fragmentNodes = Map.fromList (do
 
 -- | Build a Map from data or class symbol to instance temporary ID
 -- Prefer the class symbol if both are present
--- Only include classes and types bound in this graph
+-- Only include classes and types bound in this graph.
+-- Remove duplicate instances. Duplicate instances are instances for
+-- the same class and type.
 sliceInstances :: [(TempID,[Declaration])] -> Map Symbol [TempID]
 sliceInstances fragmentNodes = Map.fromListWith (++) (do
 
+        -- All bound symbols from all declarations
+        -- We only want to add instances to new slices i.e. slices from
+        -- these declarations
     let graphSymbols = Set.fromList (do
             (_,declarations) <- fragmentNodes
             Declaration _ _ _ boundSymbols _ <- declarations
             boundSymbols)
 
-    (tempID,declarations) <- fragmentNodes
-    declaration <- declarations
-    guard (isInstance declaration)
-    let Declaration _ _ _ _ mentionedsymbols = declaration
+        -- A Map from a pair of a class name and a type name to a tempID
+        -- This ensures that every pair of class and type has only a single
+        -- instance
+        instanceSlices = Map.fromList (do
 
-    let classSymbol = do
-            classSymbolMentionedLast <- listToMaybe (reverse (filter isClass (map fst mentionedsymbols)))
-            guard (Set.member classSymbolMentionedLast graphSymbols)
-            return classSymbolMentionedLast
-        typeSymbol = do
-            typeSymbolMentionedFirst <- listToMaybe (filter isType (map fst mentionedsymbols))
-            guard (Set.member typeSymbolMentionedFirst graphSymbols)
-            return typeSymbolMentionedFirst
-    symbol <- maybeToList (classSymbol <|> typeSymbol)
+            (tempID,declarations) <- fragmentNodes
+
+            declaration <- declarations
+            guard (isInstance declaration)
+
+            let Declaration _ _ _ _ mentionedsymbols = declaration
+
+            classSymbol <- take 1 (reverse (filter isClass (map fst mentionedsymbols)))
+            typeSymbol <- take 1 (filter isType (map fst mentionedsymbols))
+
+            return ((classSymbol,typeSymbol),tempID))
+
+
+    ((classSymbol,typeSymbol),tempID) <- Map.toList instanceSlices
+
+    let maybeClassSymbol = do
+            guard (Set.member classSymbol graphSymbols)
+            return classSymbol
+        maybeTypeSymbol = do
+            guard (Set.member typeSymbol graphSymbols)
+            return typeSymbol
+
+    symbol <- maybeToList (maybeClassSymbol <|> maybeTypeSymbol)
 
     return (symbol,[tempID]))
 
@@ -196,7 +224,7 @@ buildTempSlice tempEnvironment instanceMap constructorMap (node,declarations) =
 
             return (Use maybeQualificationText usedName reference))
 
-        -- We want every class to import all its instances
+        -- We want every class to import all of its instances
         -- For builtin classes we want the data type to import the instances
         instanceUses = do
             Declaration _ _ _ boundSymbols _ <- declarations
@@ -234,6 +262,7 @@ unwantedExtensions =
     map EnableExtension [Safe,Trustworthy,CPP] ++
     [UnknownExtension "RoleAnnotations"]
 
+
 -- | Arrange a list of declarations so that the signature is directly above the corresponding
 -- binding declaration
 arrange :: [Declaration] -> [Declaration]
@@ -258,12 +287,6 @@ moduleReference (ModuleName moduleName)
     | all isDigit moduleName = OtherSlice (read moduleName)
     | otherwise = Builtin (pack moduleName)
 
--- | A temporary ID before slices can be hashed.
-type TempID = Integer
-
--- | A Slice with a temporary ID that may use slices with
--- temporary IDs.
-type TempSlice = Slice
 
 -- | Associate every temporary ID with the final ID.
 tempSliceIDs :: [TempSlice] -> Map TempID SliceID
@@ -271,6 +294,7 @@ tempSliceIDs tempSlices = Map.fromList (do
     let tempSliceMap = sliceMap tempSlices
     Slice tempID _ _ _ <- tempSlices
     return (tempID,computeHash tempSliceMap tempID))
+
 
 -- | Build up a map from temporary ID to corresponding slice for better lookup.
 sliceMap :: [TempSlice] -> Map TempID TempSlice
