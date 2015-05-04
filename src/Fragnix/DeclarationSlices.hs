@@ -191,6 +191,7 @@ buildTempSlice sliceBindingsMap constructorMap (node,declarations) =
 -- | Add instances from a prepared map to a slice. The map is from
 -- class reference to list of instance slice IDs. If a slice uses
 -- a class reference we have to add uses of all instances of that class.
+-- We do not add a use of itself to an instance.
 addInstances :: Map Reference [SliceID] -> Slice -> Slice
 addInstances classInstanceMap (Slice sliceID language fragment uses) =
     Slice sliceID language fragment (uses ++ instanceUses) where
@@ -198,6 +199,7 @@ addInstances classInstanceMap (Slice sliceID language fragment uses) =
             Use _ _ reference <- uses
             instanceSliceIDs <- maybeToList (Map.lookup reference classInstanceMap)
             instanceSliceID <- instanceSliceIDs
+            guard (instanceSliceID /= sliceID)
             return (Use Nothing Instance (OtherSlice instanceSliceID))
 
 -- | Given a list of pairs of temporary ID and fragment we return a
