@@ -35,8 +35,7 @@ data Reference = OtherSlice SliceID | Builtin OriginalModule
 data UsedName =
     ValueName Name |
     TypeName Name |
-    ConstructorName TypeName Name |
-    Instance
+    ConstructorName TypeName Name
 
 data Name = Identifier Text | Operator Text
 
@@ -125,15 +124,12 @@ instance ToJSON UsedName  where
     toJSON (ConstructorName typeName name) = object [
         "constructorTypeName" .= typeName,
         "constructorName" .= name]
-    toJSON Instance = object [
-        "instance" .= ("" :: Text)]
 
 instance FromJSON UsedName where
     parseJSON = withObject "used name" (\o ->
         ValueName <$> o .: "valueName" <|>
         TypeName <$> o .: "typeName" <|>
-        ConstructorName <$> o .: "constructorTypeName" <*> o .: "constructorName" <|>
-        (const Instance :: Text -> UsedName) <$> o .: "instance")
+        ConstructorName <$> o .: "constructorTypeName" <*> o .: "constructorName")
 
 instance Hashable UsedName
 

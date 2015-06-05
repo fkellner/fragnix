@@ -42,10 +42,9 @@ declarationSlices declarations = (slices,symbolSlices) where
     fragmentNodes = fragmentSCCs (declarationGraph declarations)
 
     sliceBindingsMap = sliceBindings fragmentNodes
-    sliceInstancesMap = sliceInstances fragmentNodes
     constructorMap = sliceConstructors fragmentNodes
 
-    tempSlices = map (buildTempSlice sliceBindingsMap sliceInstancesMap constructorMap) fragmentNodes
+    tempSlices = map (buildTempSlice sliceBindingsMap constructorMap) fragmentNodes
     tempSliceIDMap = tempSliceIDs tempSlices
     slices = map (replaceSliceID ((Map.!) tempSliceIDMap)) tempSlices
     symbolSlices = Map.map (\tempID -> tempSliceIDMap Map.! tempID) sliceBindingsMap
@@ -58,35 +57,6 @@ sliceBindings fragmentNodes = Map.fromList (do
     Declaration _ _ _ boundsymbols _ <- declarations
     boundsymbol <- boundsymbols
     return (boundsymbol,tempID))
-
-
--- | Build a Map from data or class symbol to instance temporary ID
--- Prefer the class symbol if both are present
--- Only include classes and types bound in this graph
-sliceInstances :: [(TempID,[Declaration])] -> Map Symbol [TempID]
-sliceInstances fragmentNodes = Map.fromListWith (++) (do
-
-    let graphSymbols = Set.fromList (do
-            (_,declarations) <- fragmentNodes
-            Declaration _ _ _ boundSymbols _ <- declarations
-            boundSymbols)
-
-    (tempID,declarations) <- fragmentNodes
-    declaration <- declarations
-    guard (isInstance declaration)
-    let Declaration _ _ _ _ mentionedsymbols = declaration
-
-    let classSymbol = do
-            classSymbolMentionedLast <- listToMaybe (reverse (filter isClass (map fst mentionedsymbols)))
-            guard (Set.member classSymbolMentionedLast graphSymbols)
-            return classSymbolMentionedLast
-        typeSymbol = do
-            typeSymbolMentionedFirst <- listToMaybe (filter isType (map fst mentionedsymbols))
-            guard (Set.member typeSymbolMentionedFirst graphSymbols)
-            return typeSymbolMentionedFirst
-    symbol <- maybeToList (classSymbol <|> typeSymbol)
-
-    return (symbol,[tempID]))
 
 
 -- | Create a map from symbol to all its constructors.
@@ -151,12 +121,12 @@ fragmentSCCs graph = do
     return (sccnode,scclabels)
 
 
--- | Take a temporary environment, an instance map, a constructor map and a pair of a node and a fragment.
+-- | Take a temporary environment, a constructor map and a pair of a node and a fragment.
 -- Return a slice with a temporary ID that might contain references to temporary IDs.
 -- The nodes must have negative IDs starting from -1 to distinguish temporary from permanent
 -- slice IDs.
-buildTempSlice :: Map Symbol TempID -> Map Symbol [TempID] -> Map Symbol [Symbol] -> (TempID,[Declaration]) -> Slice
-buildTempSlice tempEnvironment instanceMap constructorMap (node,declarations) =
+buildTempSlice :: Map Symbol TempID -> Map Symbol [Symbol] -> (TempID,[Declaration]) -> Slice
+buildTempSlice tempEnvironment constructorMap (node,declarations) =
     Slice tempID language fragments uses where
         tempID = fromIntegral node
 
@@ -171,7 +141,7 @@ buildTempSlice tempEnvironment instanceMap constructorMap (node,declarations) =
             Declaration _ _ ast _ _ <- arrange declarations
             return ast)
 
-        uses = nub (mentionedUses ++ instanceUses ++ implicitConstructorUses)
+        uses = nub (mentionedUses ++ implicitConstructorUses)
 
         -- A use for every mentioned symbol
         mentionedUses = nub (do
@@ -193,14 +163,6 @@ buildTempSlice tempEnvironment instanceMap constructorMap (node,declarations) =
             reference <- maybeToList maybeReference
 
             return (Use maybeQualificationText usedName reference))
-
-        -- We want every class to import all its instances
-        -- For builtin classes we want the data type to import the instances
-        instanceUses = do
-            Declaration _ _ _ boundSymbols _ <- declarations
-            boundSymbol <- boundSymbols
-            instanceSliceTempID <- concat (maybeToList (Map.lookup boundSymbol instanceMap))
-            return (Use Nothing Instance (OtherSlice (fromIntegral instanceSliceTempID)))
 
         -- If a declarations mentions 'coerce' it needs a constructor for the coerced type.
         -- As a rough approximation we add for each mentioned newtype a
@@ -280,11 +242,7 @@ sliceMap tempSlices = Map.fromList (do
 computeHash :: Map TempID TempSlice -> TempID -> SliceID
 computeHash tempSliceMap tempID = abs (fromIntegral (hash (fragment,uses,language))) where
     Just (Slice _ language fragment tempUses) = Map.lookup tempID tempSliceMap
-    uses = map (replaceUseID (computeHash tempSliceMap)) tempUsesWithoutInstances
-    tempUsesWithoutInstances = do
-        use@(Use _ usedName _) <- tempUses
-        guard (not (usedName == Instance))
-        return use
+    uses = map (replaceUseID (computeHash tempSliceMap)) tempUses
 
 -- | Replace every occurence of a temporary ID in the given slice with the final ID.
 replaceSliceID :: (TempID -> SliceID) -> TempSlice -> Slice

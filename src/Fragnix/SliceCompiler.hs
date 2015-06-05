@@ -3,7 +3,7 @@ module Fragnix.SliceCompiler where
 import Fragnix.Slice (
     Slice(Slice),SliceID,Language(Language),Fragment(Fragment),Use(Use),
     Reference(OtherSlice,Builtin),
-    UsedName(ValueName,TypeName,ConstructorName,Instance),Name(Identifier,Operator),
+    UsedName(ValueName,TypeName,ConstructorName),Name(Identifier,Operator),
     readSliceDefault)
 
 import Prelude hiding (writeFile)
@@ -89,14 +89,10 @@ useImport (Use maybeQualification usedName symbolSource) =
             TypeName name -> [IAbs (toName name)]
             ConstructorName typeName name ->
                 [IThingWith (toName typeName) [ConName (toName name)]]
-            Instance -> []
-        sourceImport = case usedName of
-            Instance -> True
-            _ -> False
         toName (Identifier name) = Ident (unpack name)
         toName (Operator name) = Symbol (unpack name)
 
-    in ImportDecl noLoc moduleName qualified sourceImport False Nothing maybeAlias (Just (False,importSpec))
+    in ImportDecl noLoc moduleName qualified False False Nothing maybeAlias (Just (False,importSpec))
 
 
 -- | We export every type that we import in a data family instance slice
@@ -225,9 +221,6 @@ writeSliceModuleTransitive sliceID = do
 
 usedSlices :: Slice -> [SliceID]
 usedSlices (Slice _ _ _ uses) = [sliceID | Use _ _ (OtherSlice sliceID) <- uses]
-
-usedInstanceSlices :: Slice -> [SliceID]
-usedInstanceSlices (Slice _ _ _ uses) = [sliceID | Use _ Instance (OtherSlice sliceID) <- uses]
 
 doesSliceModuleExist :: SliceID -> IO Bool
 doesSliceModuleExist sliceID = doesFileExist (sliceModulePath sliceID)
