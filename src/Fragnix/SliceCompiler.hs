@@ -5,6 +5,8 @@ import Fragnix.Slice (
     Reference(OtherSlice,Builtin),
     UsedName(ValueName,TypeName,ConstructorName),Name(Identifier,Operator),
     readSliceDefault)
+import Fragnix.Instances (
+    loadInstances,instancesPath)
 
 import Prelude hiding (writeFile)
 
@@ -34,27 +36,34 @@ import Control.Exception (SomeException,catch,evaluate)
 
 import Data.Map (Map)
 import qualified Data.Map as Map(fromList,lookup)
-import Control.Monad (forM_,unless)
+import Control.Monad (forM,forM_,unless)
 import Data.Maybe (mapMaybe)
 import Data.Char (isDigit)
 
 
+-- | Compile the slice with the given slice ID to an executable program.
+-- Assumes that the slice contains a declaration for some 'main :: IO ()'.
 sliceCompilerMain :: SliceID -> IO ExitCode
 sliceCompilerMain sliceID = do
     createDirectoryIfMissing True sliceModuleDirectory
     writeSliceModuleTransitive sliceID
+    writeInstanceModule
     rawSystem "ghc" [
         "-o","main",
         "-ifragnix/temp/compilationunits",
         "-main-is",sliceModuleName sliceID,
         sliceModulePath sliceID]
 
+-- | Compile the slice with the given slice ID. Set verbosity to zero and
+-- turn all warnings off.
 sliceCompiler :: SliceID -> IO ExitCode
 sliceCompiler sliceID = do
     createDirectoryIfMissing True sliceModuleDirectory
     writeSliceModuleTransitive sliceID
+    writeInstanceModule
     rawSystem "ghc" ["-v0","-w","-ifragnix/temp/compilationunits",sliceModulePath sliceID]
 
+-- | Assemble a compilable module from a single slice.
 assemble :: Slice -> Module
 assemble (Slice sliceID language fragment uses) =
     let Fragment declarations = fragment
@@ -108,7 +117,7 @@ dataFamilyInstanceExports _ _ = Nothing
 sliceHSBootModule :: Slice -> Module
 sliceHSBootModule slice = bootModule (assemble slice)
 
--- Create a boot module from an ordinary module
+-- | Create a boot module from an ordinary module
 -- WORKAROUND: We can not put data family constructors into hs-boot files.
 -- https://ghc.haskell.org/trac/ghc/ticket/8441
 -- hs-boot files contain source imports for constructors.
@@ -215,7 +224,6 @@ writeSliceModuleTransitive sliceID = do
     exists <- doesSliceModuleExist sliceID
     unless exists (do
         slice <- readSliceDefault sliceID
-        writeSliceHSBoot slice
         writeSliceModule slice
         forM_ (usedSlices slice) writeSliceModuleTransitive)
 
@@ -224,6 +232,28 @@ usedSlices (Slice _ _ _ uses) = [sliceID | Use _ _ (OtherSlice sliceID) <- uses]
 
 doesSliceModuleExist :: SliceID -> IO Bool
 doesSliceModuleExist sliceID = doesFileExist (sliceModulePath sliceID)
+
+
+assembleInstances :: [Slice] -> Module
+assembleInstances _ =
+    Module noLoc (ModuleName instancesModuleName) [] Nothing Nothing [] []
+
+-- | Write out the module that contains all instance declarations to
+-- its special location. Load the slice IDs of instances first.
+writeInstanceModule :: IO ()
+writeInstanceModule = (do
+    instanceIDs <- loadInstances instancesPath
+    instances <- forM instanceIDs readSliceDefault
+    instancesModuleFile <- evaluate (pack (prettyPrint (assembleInstances instances)))
+    writeFile instancesModulePath instancesModuleFile)
+        `catch` (print :: SomeException -> IO ())
+
+-- | The path for the module generated for the slice with the given ID
+instancesModulePath :: FilePath
+instancesModulePath = sliceModuleDirectory </> instancesModuleName <.> "hs"
+
+instancesModuleName :: String
+instancesModuleName = "FINSTANCES"
 
 addRoleAnnotation :: String -> String
 addRoleAnnotation code = case Map.lookup (last (lines code)) roleAnnotations of
