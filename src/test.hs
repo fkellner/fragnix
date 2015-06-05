@@ -8,6 +8,8 @@ import Fragnix.DeclarationSlices (declarationSlices)
 import Fragnix.Slice (Slice(Slice),writeSliceDefault)
 import Fragnix.Environment (
     loadEnvironment,builtinEnvironmentPath)
+import Fragnix.Instances (
+    persistInstances,instancesPath)
 import Fragnix.SliceSymbols (updateEnvironment)
 import Fragnix.SliceCompiler (sliceCompiler,sliceModuleDirectory)
 
@@ -64,7 +66,8 @@ testModules folder = do
     let declarations = moduleDeclarationsWithEnvironment builtinEnvironment modules
     writeDeclarations "fragnix/temp/declarations/declarations.json" declarations
 
-    let (slices,symbolSlices) = declarationSlices declarations
+    let (slices,symbolSlices,instances) = declarationSlices declarations
+    persistInstances instancesPath instances
     forM_ slices writeSliceDefault
 
     let environment = updateEnvironment symbolSlices (moduleSymbols builtinEnvironment modules)

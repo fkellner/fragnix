@@ -7,6 +7,8 @@ import Fragnix.Declaration (
 import Fragnix.Slice (
     Slice(Slice),SliceID,Language(Language),Fragment(Fragment),
     Use(Use),UsedName(..),Name(Identifier,Operator),Reference(OtherSlice,Builtin))
+import Fragnix.Instances (
+    Instances)
 
 import Language.Haskell.Names (
     Symbol(Constructor,Value,Method,Selector,Class,Data,NewType,symbolName,symbolModule))
@@ -23,21 +25,19 @@ import Data.Graph.Inductive.PatriciaTree (
     Gr)
 
 import Control.Monad (guard)
-import Control.Applicative ((<|>))
 import Data.Text (pack)
 import Data.Char (isDigit)
 import Data.Map (Map)
 import qualified Data.Map as Map (lookup,fromList,fromListWith,(!),map)
-import qualified Data.Set as Set (fromList,member)
-import Data.Maybe (maybeToList,fromJust,listToMaybe)
+import Data.Maybe (maybeToList,fromJust)
 import Data.Hashable (hash)
 import Data.List (nub,(\\))
 
 
 -- | Extract all slices from the given list of declarations. Also return a map
 -- from a symbol to the sliceID of the slice that binds it now.
-declarationSlices :: [Declaration] -> ([Slice],Map Symbol SliceID)
-declarationSlices declarations = (slices,symbolSlices) where
+declarationSlices :: [Declaration] -> ([Slice],Map Symbol SliceID,Instances)
+declarationSlices declarations = (slices,symbolSlices,[]) where
 
     fragmentNodes = fragmentSCCs (declarationGraph declarations)
 

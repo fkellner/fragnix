@@ -5,6 +5,8 @@ import Fragnix.Slice (writeSliceDefault)
 import Fragnix.Environment (
     loadEnvironment,persistEnvironment,
     environmentPath,builtinEnvironmentPath)
+import Fragnix.Instances (
+    persistInstances,instancesPath)
 import Fragnix.SliceSymbols (
     updateEnvironment,findMainSliceIDs)
 import Fragnix.ModuleDeclarations (
@@ -37,7 +39,8 @@ main = do
     let nameErrors = moduleNameErrors environment modules
     forM_ nameErrors (\nameError -> putStrLn ("Warning: " ++ ppError nameError))
 
-    let (slices,symbolSlices) = declarationSlices declarations
+    let (slices,symbolSlices,instances) = declarationSlices declarations
+    persistInstances instancesPath instances
     forM_ slices writeSliceDefault
 
     let updatedEnvironment = updateEnvironment symbolSlices (moduleSymbols environment modules)
