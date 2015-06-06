@@ -72,7 +72,7 @@ assemble slice@(Slice sliceID _ _ _) =
     let decls = sliceDecls slice
         moduleName = ModuleName (sliceModuleName sliceID)
         pragmas = slicePragmas slice
-        imports = sliceImports slice
+        imports = sliceImports slice ++ [instancesModuleImport]
         -- We need an export list to export the data family even
         -- though a slice only contains the data family instance
         exports = dataFamilyInstanceExports decls imports
@@ -131,6 +131,12 @@ useImport (Use maybeQualification usedName symbolSource) =
         toName (Operator name) = Symbol (unpack name)
 
     in ImportDecl noLoc moduleName qualified False False Nothing maybeAlias (Just (False,importSpec))
+
+
+-- | The import for the module that contains all type class instances.
+instancesModuleImport :: ImportDecl
+instancesModuleImport =
+    ImportDecl noLoc (ModuleName instancesModuleName) False False False Nothing Nothing Nothing
 
 
 -- | We export every type that we import in a data family instance slice
