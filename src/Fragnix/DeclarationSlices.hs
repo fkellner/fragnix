@@ -8,7 +8,7 @@ import Fragnix.Slice (
     Slice(Slice),SliceID,Language(Language),Fragment(Fragment),
     Use(Use),UsedName(..),Name(Identifier,Operator),Reference(OtherSlice,Builtin))
 import Fragnix.Instances (
-    Instances)
+    InstanceSlice)
 
 import Language.Haskell.Names (
     Symbol(Constructor,Value,Method,Selector,Class,Data,NewType,symbolName,symbolModule))
@@ -31,25 +31,28 @@ import Data.Map (Map)
 import qualified Data.Map as Map (lookup,fromList,fromListWith,(!),map)
 import Data.Maybe (maybeToList,fromJust)
 import Data.Hashable (hash)
-import Data.List (nub,(\\))
+import Data.List (nub,(\\),partition)
 
 
--- | Extract all slices from the given list of declarations. Also return a map
--- from a symbol to the sliceID of the slice that binds it now.
-declarationSlices :: [Declaration] -> ([Slice],Map Symbol SliceID,Instances)
-declarationSlices declarations = (slices,symbolSlices,instances) where
+-- | Extract all slices from the given list of declarations. We return three
+-- things: a list of non-instance slices, a list of slices and a map from
+-- original symbol to the ID of the slice that binds it.
+declarationSlices :: [Declaration] -> ([Slice],[InstanceSlice],Map Symbol SliceID)
+declarationSlices declarations = (slices,instanceSlices,symbolSlices) where
 
-    fragmentNodes = fragmentSCCs (declarationGraph declarations)
+    allFragmentNodes = fragmentSCCs (declarationGraph declarations)
+    (instanceFragmentNodes,fragmentNodes) = partition (any isInstance . snd) allFragmentNodes
 
     sliceBindingsMap = sliceBindings fragmentNodes
     constructorMap = sliceConstructors fragmentNodes
 
     tempSlices = map (buildTempSlice sliceBindingsMap constructorMap) fragmentNodes
-    tempSliceIDMap = tempSliceIDs tempSlices
+    tempInstanceSlices = map (buildTempSlice sliceBindingsMap constructorMap) instanceFragmentNodes
+    tempSliceIDMap = tempSliceIDs (tempSlices ++ tempInstanceSlices)
 
     slices = map (replaceSliceID ((Map.!) tempSliceIDMap)) tempSlices
+    instanceSlices = map (replaceSliceID ((Map.!) tempSliceIDMap)) tempInstanceSlices
     symbolSlices = Map.map (\tempID -> tempSliceIDMap Map.! tempID) sliceBindingsMap
-    instances = instanceSlices tempSliceIDMap fragmentNodes
 
 
 -- | Build a Map from symbol to temporary ID that binds this symbol.
@@ -178,14 +181,6 @@ buildTempSlice tempEnvironment constructorMap (node,declarations) =
             constructorSliceTempID <- maybeToList (Map.lookup constructorSymbol tempEnvironment)
             let reference = OtherSlice (fromIntegral constructorSliceTempID)
             return (Use Nothing (symbolUsedName constructorSymbol) reference)
-
-
--- | Find the slice IDs of all slices that contain at least one instance.
-instanceSlices :: Map TempID SliceID -> [(TempID,[Declaration])] -> [SliceID]
-instanceSlices tempSliceIDMap fragmentNodes = do
-    (tempID,declarations) <- fragmentNodes
-    guard (any isInstance declarations)
-    return (tempSliceIDMap Map.! tempID)
 
 
 -- | Some declarations implicitly require the constructors for all mentioned

@@ -9,7 +9,7 @@ import Fragnix.Slice (Slice(Slice),writeSliceDefault)
 import Fragnix.Environment (
     loadEnvironment,builtinEnvironmentPath)
 import Fragnix.Instances (
-    persistInstances,instancesPath)
+    persistInstancesDefault)
 import Fragnix.SliceSymbols (updateEnvironment)
 import Fragnix.SliceCompiler (sliceCompiler,sliceModuleDirectory)
 
@@ -66,17 +66,14 @@ testModules folder = do
     let declarations = moduleDeclarationsWithEnvironment builtinEnvironment modules
     writeDeclarations "fragnix/temp/declarations/declarations.json" declarations
 
-    let (slices,symbolSlices,instances) = declarationSlices declarations
-    persistInstances instancesPath instances
+    let (slices,instanceSlices,symbolSlices) = declarationSlices declarations
+    persistInstancesDefault instanceSlices
     forM_ slices writeSliceDefault
 
     let environment = updateEnvironment symbolSlices (moduleSymbols builtinEnvironment modules)
         moduleSymbolResults = do
             (moduleName,symbols) <- Map.toList environment
             return (prettyPrint moduleName ++ " " ++ unwords (map (prettyPrint . symbolName) symbols))
-
-    sliceModuleDirectoryExists <- doesDirectoryExist sliceModuleDirectory
-    when sliceModuleDirectoryExists (removeDirectoryRecursive sliceModuleDirectory)
 
     let sliceIDs = [sliceID | Slice sliceID _ _ _ <- slices]
     exitCodes <- forM sliceIDs (\sliceID -> sliceCompiler sliceID)

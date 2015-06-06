@@ -1,25 +1,33 @@
 module Fragnix.Instances where
 
-import Fragnix.Slice (SliceID)
+import Fragnix.Slice (Slice(Slice),writeSlice,readSlice)
 
-import Data.Aeson (encode,decode)
-import qualified Data.ByteString.Lazy as ByteString (readFile,writeFile)
-import System.Directory (createDirectoryIfMissing)
-import System.FilePath (dropFileName,(</>))
+import System.Directory (createDirectoryIfMissing,getDirectoryContents,doesFileExist)
+import System.FilePath ((</>))
 
-import Data.Maybe (fromMaybe)
+import Control.Monad (forM,forM_,filterM)
 
-type Instances = [SliceID]
+type InstanceSlice = Slice
 
-loadInstances :: FilePath -> IO Instances
+loadInstances :: FilePath -> IO [InstanceSlice]
 loadInstances path = do
-    instancesfile <- ByteString.readFile path
-    return (fromMaybe (error "Failed to parse instances") (decode instancesfile))
+    createDirectoryIfMissing True path
+    filenames <- getDirectoryContents path
+    let slicePaths = map (\filename -> path </> filename) filenames
+    existingSlicePaths <- filterM doesFileExist slicePaths
+    forM existingSlicePaths readSlice
 
-persistInstances :: FilePath -> Instances -> IO ()
-persistInstances path instances = do
-    createDirectoryIfMissing True (dropFileName path)
-    ByteString.writeFile path (encode instances)
+loadInstancesDefault :: IO [InstanceSlice]
+loadInstancesDefault = loadInstances instancesDirectory
 
-instancesPath :: FilePath
-instancesPath = "fragnix" </> "instances"
+persistInstances :: FilePath -> [InstanceSlice] -> IO ()
+persistInstances path instanceSlices = do
+    createDirectoryIfMissing True instancesDirectory
+    forM_ instanceSlices (\instanceSlice@(Slice sliceID _ _ _) ->
+        writeSlice (path </> show sliceID) instanceSlice)
+
+persistInstancesDefault :: [InstanceSlice] -> IO ()
+persistInstancesDefault = persistInstances instancesDirectory
+
+instancesDirectory :: FilePath
+instancesDirectory = "fragnix" </> "instances"

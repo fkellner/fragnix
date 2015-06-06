@@ -6,7 +6,7 @@ import Fragnix.Slice (
     UsedName(ValueName,TypeName,ConstructorName),Name(Identifier,Operator),
     readSliceDefault)
 import Fragnix.Instances (
-    loadInstances,instancesPath)
+    InstanceSlice,loadInstancesDefault)
 
 import Prelude hiding (writeFile)
 
@@ -46,9 +46,7 @@ import Data.Char (isDigit)
 -- Assumes that the slice contains a declaration for some 'main :: IO ()'.
 sliceCompilerMain :: SliceID -> IO ExitCode
 sliceCompilerMain sliceID = do
-    createDirectoryIfMissing True sliceModuleDirectory
-    writeSliceModuleTransitive sliceID
-    writeInstancesModule
+    writeSliceModules sliceID
     rawSystem "ghc" [
         "-o","main",
         "-ifragnix/temp/compilationunits",
@@ -60,11 +58,17 @@ sliceCompilerMain sliceID = do
 -- turn all warnings off.
 sliceCompiler :: SliceID -> IO ExitCode
 sliceCompiler sliceID = do
-    createDirectoryIfMissing True sliceModuleDirectory
-    writeSliceModuleTransitive sliceID
-    writeInstancesModule
+    writeSliceModules sliceID
     rawSystem "ghc" ["-v0","-w","-ifragnix/temp/compilationunits",sliceModulePath sliceID]
 
+writeSliceModules :: SliceID -> IO ()
+writeSliceModules sliceID = do
+    createDirectoryIfMissing True sliceModuleDirectory
+    slices <- loadSlicesTransitive sliceID
+    instanceSlices <- loadInstancesDefault
+    forM slices writeSliceHSBoot
+    forM slices writeSliceModule
+    writeInstancesModule instanceSlices
 
 -- | Assemble a compilable module from a single slice.
 assembleSliceModule :: Slice -> Module
@@ -252,9 +256,21 @@ writeSliceModule slice@(Slice sliceID _ _ _) = (do
 -- hackily add role annotations for GHC 7.8.3.
 writeSliceHSBoot :: Slice -> IO ()
 writeSliceHSBoot slice@(Slice sliceID _ _ _) = (do
-    emptyslicecontent <- evaluate (pack (addRoleAnnotation (prettyPrint (sliceHSBootModule slice))))
-    writeFile (sliceHSBootPath sliceID) emptyslicecontent)
+    sliceHSBootContent <- evaluate (pack (addRoleAnnotation (prettyPrint (sliceHSBootModule slice))))
+    writeFile (sliceHSBootPath sliceID) sliceHSBootContent)
         `catch` (print :: SomeException -> IO ())
+
+
+loadSlicesTransitive :: SliceID -> IO [Slice]
+loadSlicesTransitive sliceID = do
+    sliceIDs <- loadSliceIDsTransitive sliceID
+    forM sliceIDs readSliceDefault
+
+loadSliceIDsTransitive :: SliceID -> IO [SliceID]
+loadSliceIDsTransitive sliceID = do
+    slice <- readSliceDefault sliceID
+    sliceIDs <- forM (usedSlices slice) loadSliceIDsTransitive
+    return ([sliceID] ++ unions sliceIDs)
 
 -- | Write out the module file and an hs-boot file for the slice with the given ID
 -- and all the slices it trasitively uses. The hs-boot file is unnecessary for
@@ -278,7 +294,7 @@ doesSliceModuleExist sliceID = doesFileExist (sliceModulePath sliceID)
 -- | Take a list of slices that all contain at least one instance (and
 -- should contain exactly one instance) and generate a module with all
 -- these instance declarations.
-assembleInstancesModule :: [Slice] -> Module
+assembleInstancesModule :: [InstanceSlice] -> Module
 assembleInstancesModule instanceSlices =
     Module noLoc (ModuleName instancesModuleName) pragmas Nothing Nothing imports decls where
         pragmas = unions (map slicePragmas instanceSlices)
@@ -288,11 +304,9 @@ assembleInstancesModule instanceSlices =
 
 -- | Write out the module that contains all instance declarations to
 -- its special location. Load the slice IDs of instances first.
-writeInstancesModule :: IO ()
-writeInstancesModule = (do
-    instanceIDs <- loadInstances instancesPath
-    instances <- forM instanceIDs readSliceDefault
-    instancesModuleFile <- evaluate (pack (prettyPrint (assembleInstancesModule instances)))
+writeInstancesModule :: [InstanceSlice] -> IO ()
+writeInstancesModule instanceSlices = (do
+    instancesModuleFile <- evaluate (pack (prettyPrint (assembleInstancesModule instanceSlices)))
     writeFile instancesModulePath instancesModuleFile)
         `catch` (print :: SomeException -> IO ())
 
