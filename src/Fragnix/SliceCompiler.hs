@@ -48,7 +48,7 @@ sliceCompilerMain :: SliceID -> IO ExitCode
 sliceCompilerMain sliceID = do
     createDirectoryIfMissing True sliceModuleDirectory
     writeSliceModuleTransitive sliceID
-    writeInstanceModule
+    writeInstancesModule
     rawSystem "ghc" [
         "-o","main",
         "-ifragnix/temp/compilationunits",
@@ -62,13 +62,13 @@ sliceCompiler :: SliceID -> IO ExitCode
 sliceCompiler sliceID = do
     createDirectoryIfMissing True sliceModuleDirectory
     writeSliceModuleTransitive sliceID
-    writeInstanceModule
+    writeInstancesModule
     rawSystem "ghc" ["-v0","-w","-ifragnix/temp/compilationunits",sliceModulePath sliceID]
 
 
 -- | Assemble a compilable module from a single slice.
-assemble :: Slice -> Module
-assemble slice@(Slice sliceID _ _ _) =
+assembleSliceModule :: Slice -> Module
+assembleSliceModule slice@(Slice sliceID _ _ _) =
     let decls = sliceDecls slice
         moduleName = ModuleName (sliceModuleName sliceID)
         pragmas = slicePragmas slice
@@ -115,6 +115,8 @@ parseDeclaration sliceID ghcextensions declaration = decl where
         extensions = map (parseExtension . unpack) ghcextensions,
         fixities = Just baseFixities}
 
+
+-- | Generate the import declaration for a single use.
 useImport :: Use -> ImportDecl
 useImport (Use maybeQualification usedName symbolSource) =
     let moduleName = case symbolSource of
@@ -149,8 +151,10 @@ dataFamilyInstanceExports [GDataInsDecl _ _ _ _ _ _] imports = Just (do
     return (EThingAll (UnQual typeName)))
 dataFamilyInstanceExports _ _ = Nothing
 
+
+
 sliceHSBootModule :: Slice -> Module
-sliceHSBootModule slice = bootModule (assemble slice)
+sliceHSBootModule slice = bootModule (assembleSliceModule slice)
 
 -- | Create a boot module from an ordinary module
 -- WORKAROUND: We can not put data family constructors into hs-boot files.
@@ -173,6 +177,7 @@ bootImport :: ImportDecl -> Maybe ImportDecl
 bootImport importDecl
     | importSrc importDecl = Nothing
     | isSliceModule (importModule importDecl) = Just (importDecl {importSrc = True})
+    | importModule importDecl == ModuleName instancesModuleName = Nothing
     | otherwise = Just importDecl
 
 -- | Remove all source imports and make all other imports source except those
@@ -238,7 +243,7 @@ isConstructorImport _ = False
 
 writeSliceModule :: Slice -> IO ()
 writeSliceModule slice@(Slice sliceID _ _ _) = (do
-    slicecontent <- evaluate (pack (prettyPrint (assemble slice)))
+    slicecontent <- evaluate (pack (prettyPrint (assembleSliceModule slice)))
     writeFile (sliceModulePath sliceID) slicecontent)
         `catch` (print :: SomeException -> IO ())
 
@@ -260,6 +265,7 @@ writeSliceModuleTransitive sliceID = do
     unless exists (do
         slice <- readSliceDefault sliceID
         writeSliceModule slice
+        writeSliceHSBoot slice
         forM_ (usedSlices slice) writeSliceModuleTransitive)
 
 usedSlices :: Slice -> [SliceID]
@@ -272,28 +278,24 @@ doesSliceModuleExist sliceID = doesFileExist (sliceModulePath sliceID)
 -- | Take a list of slices that all contain at least one instance (and
 -- should contain exactly one instance) and generate a module with all
 -- these instance declarations.
-assembleInstances :: [Slice] -> Module
-assembleInstances instanceSlices =
+assembleInstancesModule :: [Slice] -> Module
+assembleInstancesModule instanceSlices =
     Module noLoc (ModuleName instancesModuleName) pragmas Nothing Nothing imports decls where
         pragmas = unions (map slicePragmas instanceSlices)
-        imports = unions (map sliceImports instanceSlices)
+        imports = mapMaybe bootImport (unions (map sliceImports instanceSlices))
         decls = concatMap sliceDecls instanceSlices
-
-
--- | Take the union of a list of lists as if they were sets.
-unions :: (Eq a) => [[a]] -> [a]
-unions = foldr union []
 
 
 -- | Write out the module that contains all instance declarations to
 -- its special location. Load the slice IDs of instances first.
-writeInstanceModule :: IO ()
-writeInstanceModule = (do
+writeInstancesModule :: IO ()
+writeInstancesModule = (do
     instanceIDs <- loadInstances instancesPath
     instances <- forM instanceIDs readSliceDefault
-    instancesModuleFile <- evaluate (pack (prettyPrint (assembleInstances instances)))
+    instancesModuleFile <- evaluate (pack (prettyPrint (assembleInstancesModule instances)))
     writeFile instancesModulePath instancesModuleFile)
         `catch` (print :: SomeException -> IO ())
+
 
 -- | The path for the module generated for the slice with the given ID
 instancesModulePath :: FilePath
@@ -301,6 +303,7 @@ instancesModulePath = sliceModuleDirectory </> instancesModuleName <.> "hs"
 
 instancesModuleName :: String
 instancesModuleName = "FINSTANCES"
+
 
 addRoleAnnotation :: String -> String
 addRoleAnnotation code = case Map.lookup (last (lines code)) roleAnnotations of
@@ -331,3 +334,7 @@ roleAnnotations = Map.fromList [
     ("                       {-# UNPACK #-} !ByteArray",
         "type role Vector phantom")]
 
+
+-- | Take the union of a list of lists as if they were sets.
+unions :: (Eq a) => [[a]] -> [a]
+unions = foldr union []
