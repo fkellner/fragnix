@@ -37,7 +37,7 @@ import Data.List (nub,(\\))
 -- | Extract all slices from the given list of declarations. Also return a map
 -- from a symbol to the sliceID of the slice that binds it now.
 declarationSlices :: [Declaration] -> ([Slice],Map Symbol SliceID,Instances)
-declarationSlices declarations = (slices,symbolSlices,[]) where
+declarationSlices declarations = (slices,symbolSlices,instances) where
 
     fragmentNodes = fragmentSCCs (declarationGraph declarations)
 
@@ -46,8 +46,10 @@ declarationSlices declarations = (slices,symbolSlices,[]) where
 
     tempSlices = map (buildTempSlice sliceBindingsMap constructorMap) fragmentNodes
     tempSliceIDMap = tempSliceIDs tempSlices
+
     slices = map (replaceSliceID ((Map.!) tempSliceIDMap)) tempSlices
     symbolSlices = Map.map (\tempID -> tempSliceIDMap Map.! tempID) sliceBindingsMap
+    instances = instanceSlices tempSliceIDMap fragmentNodes
 
 
 -- | Build a Map from symbol to temporary ID that binds this symbol.
@@ -176,6 +178,14 @@ buildTempSlice tempEnvironment constructorMap (node,declarations) =
             constructorSliceTempID <- maybeToList (Map.lookup constructorSymbol tempEnvironment)
             let reference = OtherSlice (fromIntegral constructorSliceTempID)
             return (Use Nothing (symbolUsedName constructorSymbol) reference)
+
+
+-- | Find the slice IDs of all slices that contain at least one instance.
+instanceSlices :: Map TempID SliceID -> [(TempID,[Declaration])] -> [SliceID]
+instanceSlices tempSliceIDMap fragmentNodes = do
+    (tempID,declarations) <- fragmentNodes
+    guard (any isInstance declarations)
+    return (tempSliceIDMap Map.! tempID)
 
 
 -- | Some declarations implicitly require the constructors for all mentioned
