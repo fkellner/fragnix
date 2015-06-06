@@ -35,9 +35,10 @@ import System.Exit (ExitCode)
 import Control.Exception (SomeException,catch,evaluate)
 
 import Data.Map (Map)
-import qualified Data.Map as Map(fromList,lookup)
+import qualified Data.Map as Map (fromList,lookup)
 import Control.Monad (forM,forM_,unless)
 import Data.Maybe (mapMaybe)
+import Data.List (union)
 import Data.Char (isDigit)
 
 
@@ -54,6 +55,7 @@ sliceCompilerMain sliceID = do
         "-main-is",sliceModuleName sliceID,
         sliceModulePath sliceID]
 
+
 -- | Compile the slice with the given slice ID. Set verbosity to zero and
 -- turn all warnings off.
 sliceCompiler :: SliceID -> IO ExitCode
@@ -63,21 +65,48 @@ sliceCompiler sliceID = do
     writeInstanceModule
     rawSystem "ghc" ["-v0","-w","-ifragnix/temp/compilationunits",sliceModulePath sliceID]
 
+
 -- | Assemble a compilable module from a single slice.
 assemble :: Slice -> Module
-assemble (Slice sliceID language fragment uses) =
-    let Fragment declarations = fragment
-        decls = map (parseDeclaration sliceID ghcextensions) declarations
+assemble slice@(Slice sliceID _ _ _) =
+    let decls = sliceDecls slice
         moduleName = ModuleName (sliceModuleName sliceID)
-        Language ghcextensions = language
-        languagepragmas = [Ident "NoImplicitPrelude"] ++ (map (Ident . unpack) ghcextensions)
-        pragmas = [LanguagePragma noLoc languagepragmas]
-        imports = map useImport uses
+        pragmas = slicePragmas slice
+        imports = sliceImports slice
         -- We need an export list to export the data family even
         -- though a slice only contains the data family instance
         exports = dataFamilyInstanceExports decls imports
     in Module noLoc moduleName pragmas Nothing exports imports decls
 
+
+-- | The language pragmas we need to compile a slice. We also add an
+-- 'NoImplicitPrelude' to make sure we caught all necessary imports and
+-- to avoid name clashes.
+slicePragmas :: Slice -> [ModulePragma]
+slicePragmas (Slice _ (Language ghcextensions) _ _) =
+    [LanguagePragma noLoc languagepragmas] where
+        languagepragmas =
+            [Ident "NoImplicitPrelude"] ++
+            (map (Ident . unpack) ghcextensions)
+
+
+-- | The imports for a slice. Each use corresponds to an import.
+sliceImports :: Slice -> [ImportDecl]
+sliceImports (Slice _ _ _ uses) = map useImport uses
+
+
+-- | The declarations in a slice. The slice contains a fragment.
+-- A fragment is a list of declarations represented textually. In order
+-- to reparse them we need to know the language extensions.
+sliceDecls :: Slice -> [Decl]
+sliceDecls (Slice sliceID language fragment _) = decls where
+    Fragment declarations = fragment
+    Language ghcextensions = language
+    decls = map (parseDeclaration sliceID ghcextensions) declarations
+
+
+-- | Parse a declaration. We also need the slice ID for error messages and
+-- (a textual representation of) the list of language extensions.
 parseDeclaration :: SliceID -> [Text] -> Text -> Decl
 parseDeclaration sliceID ghcextensions declaration = decl where
     Module _ _ _ _ _ _ [decl] = fromParseResult (parseModuleWithMode parseMode (unpack declaration))
@@ -234,9 +263,21 @@ doesSliceModuleExist :: SliceID -> IO Bool
 doesSliceModuleExist sliceID = doesFileExist (sliceModulePath sliceID)
 
 
+-- | Take a list of slices that all contain at least one instance (and
+-- should contain exactly one instance) and generate a module with all
+-- these instance declarations.
 assembleInstances :: [Slice] -> Module
-assembleInstances _ =
-    Module noLoc (ModuleName instancesModuleName) [] Nothing Nothing [] []
+assembleInstances instanceSlices =
+    Module noLoc (ModuleName instancesModuleName) pragmas Nothing Nothing imports decls where
+        pragmas = unions (map slicePragmas instanceSlices)
+        imports = unions (map sliceImports instanceSlices)
+        decls = concatMap sliceDecls instanceSlices
+
+
+-- | Take the union of a list of lists as if they were sets.
+unions :: (Eq a) => [[a]] -> [a]
+unions = foldr union []
+
 
 -- | Write out the module that contains all instance declarations to
 -- its special location. Load the slice IDs of instances first.
